@@ -1,5 +1,5 @@
 import numpy as np
-from State import State
+from .State import State
 
 
 def omegaJV(j, v):
@@ -8,10 +8,6 @@ def omegaJV(j, v):
 
 def KLV(v, X: State):
     X = State(np.copy(X))
-    """
-    Функція к1J здійснює додавання за модулем 2 до кожної колонки Gi матриці внутрішнього стану
-    G = (gц) вектора 007) є V64 , де v - номер ітерації, dJ)= ((j«4)EВv,O,O,O,O,O,O,O)^T.
-    """
     for col_id in range(len(X[0])):
         vec = omegaJV(col_id, v)
         X.addColumnMod(vec, col_id, 2)
@@ -103,13 +99,6 @@ class KupynaRealization:
 
     @staticmethod
     def RLN(state: State, n) -> list:
-        """
-           Повертає перші n елементів зі стану у вигляді одновимірного списку.
-
-           :param state: Стан, з якого потрібно отримати перші елементи.
-           :param n: Кількість елементів, які потрібно отримати.
-           :return: Список, що містить перші n елементів стану.
-           """
         flattened_state = np.reshape(state, (1, len(state) * len(state[0])))
         first_n_elements = flattened_state[0][:n]
         return list(first_n_elements)
@@ -133,13 +122,6 @@ class KupynaRealization:
         xor_value = ((self.c - 1 - j) << 4) ^ v
         result.append(xor_value)
         return result
-
-    """
-           Функція nu_l_v здійснює додавання за модулем 264 до кожної колонки Gi матриці внутрішнього
-           стану G = (gц) вектора ,JJ є V64 , де v - номер ітерації, c;}v) = (OxFЗ,OxFO,OxFO,OxFO,OxFO,OxFO,OxFO,
-           ((с - 1 - j)<<4) ЕВ v)т, при цьому під час операції додавання ОхFЗ - молодші 8 біт вектора с;?),
-           9oJ - молодші 8 біт вектора Gi.
-           """
 
     def nuLV(self, v, X: State):
         new_X = State(np.copy(X))
@@ -191,56 +173,30 @@ class KupynaRealization:
         return bytes(self.RLN(final, self.n))
 
     def messageHashing(self, M: bytearray | bytes):
-        # Розділяємо повідомлення та додаємо до нього додаткові біти для падінгу
         M = self.messageDivider(self.bytesPadding(M))
-
-        # Ініціалізуємо початкове значення хеш-функції
         h_i = self.converterBytes(self.IV)
-
-        # Проходимося по кожному блоку M і обчислюємо наступне значення хеш-функції
         for v in range(1, len(M) + 1):
-            # Обчислюємо першу частину хеш-функції
             h_i_1 = self.TLXor(np.bitwise_xor(h_i, M[v - 1]))
-
-            # Обчислюємо другу частину хеш-функції
             h_i_2 = self.TLSum(M[v - 1])
-
-            # Зберігаємо поточне значення хеш-функції, щоб використати його на наступній ітерації
             h_i_3 = h_i
-
-            # Обчислюємо наступне значення хеш-функції
             h_i = State(np.bitwise_xor(np.bitwise_xor(h_i_1, h_i_2), h_i_3))
-
-        # Повертаємо хеш-функцію, обчислену на останньому кроці
         return self.hasher(h_i)
 
     def bytesPadding(self, bytez: bytearray | bytes):
         block_size = self.I
         b = np.ceil(block_size / 8).astype(int)
-
-        # Calculate number of bytes needed for padding
         n1 = ((-self.N - 97) % self.I) // 8
         padding = bytearray([0x80] + [0x00] * n1)
-
-        # Add padding to input bytes
         out = bytez + padding
-
-        # Calculate size of padding block
         c = 12
         size = (b - ((len(out) + c) % b)) % b
-
-        # Add padding block to input bytes
         out += b"\x00" * size
         out += self.N.to_bytes(c, "little")
 
         return out
 
     def messageDivider(self, bytez: bytearray | bytes) -> list:
-        # Calculate the number of bytes in each block
         block_size = self.I // 8
-
-        # Divide the input bytes into blocks of size `block_size`, convert each block into a state, and store the state
-        # in a list.
         num_blocks = len(bytez) // block_size
         states = []
         for i in range(num_blocks):
@@ -250,7 +206,6 @@ class KupynaRealization:
         return states
 
     def converterBytes(self, vec: bytes) -> State:
-        '''Converts bytes to state'''
         list_ = []
         for i in vec:
             list_.append(int(i))
